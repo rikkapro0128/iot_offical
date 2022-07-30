@@ -15,6 +15,10 @@ io.on('connection', (socket) => {
     console.log(raw_data);
   });
 
+  socket.on("disconnect", (reason) => {
+    console.log(reason);
+  });
+
 });
 
 httpServer.listen(port, () => {
