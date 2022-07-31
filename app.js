@@ -1,26 +1,17 @@
-import express from "express";
-import { createServer } from "http";
-import { Server } from "socket.io";
+// import express from "express";
+import { WebSocketServer } from 'ws';
+
+import connectMongoDB from './db/connect.js';
+import nodeEvent from './nodeEvent/index.js';
 
 const port = 3000;
 
-const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, { /* options */ });
+const wss = new WebSocketServer({ port });
 
-io.on('connection', (socket) => {
-  console.log(`Node ESP8266 by ID: ${socket.id} is connected!`);
+connectMongoDB(); // config connect to database mongoDB
 
-  socket.on('_node_esp8266_change_data_', (raw_data) => {
-    console.log(raw_data);
-  });
+wss.on('connection', function connection(ws, req) {
 
-  socket.on("disconnect", (reason) => {
-    console.log(reason);
-  });
+  nodeEvent(ws, req);
 
-});
-
-httpServer.listen(port, () => {
-  console.log(`Server listening at port ${port}`);
 });
