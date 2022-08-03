@@ -1,6 +1,4 @@
-// import uniqid from 'uniqid'
-
-import { NodeESP8266Model, SensorModel, DeviceModel } from '../model/index.js';
+import { NodeModel } from '../model/index.js';
 
 export default (node, req, connections) => {
 
@@ -11,9 +9,9 @@ export default (node, req, connections) => {
     try {
       const dataParse = JSON.parse(data.toString());
       if(dataParse.type_data === '$info_node') {
-        const nodeIsExist = await NodeESP8266Model.findOne({ macAddress: dataParse.ip_mac });
+        const nodeIsExist = await NodeModel.NodeESP8266.findOne({ macAddress: dataParse.ip_mac });
         if(!nodeIsExist) {
-          const newNode = new NodeESP8266Model({
+          const newNode =  new NodeModel.NodeESP8266({
             ipRemote: ip,
             desc: dataParse.desc,
             typeModel: dataParse.type,
@@ -23,7 +21,7 @@ export default (node, req, connections) => {
           const resultSensor = dataParse.sensor_manager.map(async (value, index) => {
             // frame data => [name|type_model|uint|desc|pin]
             const valueSensor = value.split('|');
-            const newSensor = new SensorModel({
+            const newSensor = new NodeModel.Sensor({
               name:  valueSensor[0],
               desc:  valueSensor[3] !== 'NONE' ? valueSensor[3] : 'no-desc',
               pin:  valueSensor[4] !== 'NONE' ? valueSensor[3] : 'no-pin',
@@ -38,7 +36,7 @@ export default (node, req, connections) => {
           const resultDevice = dataParse.device_manager.map(async (value, index) => {
             // frame data => [name|type_model|{DIGITAL-ANALOG-ONE_WIRE}|desc|{muti-solo}|{list_pin}]
             const valueDevice = value.split('|');
-            const newDevice = new DeviceModel({
+            const newDevice = new NodeModel.Device({
               name:  valueDevice[0],
               desc:  valueDevice[3] !== 'NONE' ? valueDevice[3] : 'no-desc',
               pins:  valueDevice[4] === 'MUTI' ? valueDevice[5].split('+').map(val => { return { val } }) : [{ val: valueDevice[5] }],
@@ -57,7 +55,7 @@ export default (node, req, connections) => {
           node.send(JSON.stringify({ type: '$message', message: '_NODE_IS_EXIST_', idNode: nodeIsExist._id }));
         }
       }else if(dataParse.type_data === '$data_sensor') {
-        const sensor = await SensorModel.findOne({ byNode: dataParse.id_node, typeModel: dataParse.type_model });
+        const sensor = await NodeModel.Sensor.findOne({ byNode: dataParse.id_node, typeModel: dataParse.type_model });
         sensor.value = `${dataParse.temp}+${dataParse.humi}`;
         await sensor.save();
       }
