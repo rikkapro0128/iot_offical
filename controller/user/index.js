@@ -16,7 +16,9 @@ class User {
           if(result) {
             const payload = { idUser: checkUser._id, nameUser: checkUser.name };
             const { token, refreshToken } = help.getCoupleToken({ payload });
-            res.status(200).json({ message: 'login account successful!', token: `Miru ${token}`, refreshToken: `Miru ${refreshToken}` });
+            checkUser.status = 'login';
+            await checkUser.save();
+            res.status(200).json({ message: 'login account successful!', accessToken: `Miru ${token}`, refreshToken: `Miru ${refreshToken}` });
           }else {
             errorByInfo = true;
           }
@@ -34,6 +36,23 @@ class User {
     }
   }
 
+  async logout(req, res, next) { // [path: /api/user/logout]
+    try {
+      const token = req.headers['token'];
+      if(token) {
+        const { idUser, nameUser } = jwt.verify(token, process.env.SECRET_KEY_JWT);
+        const checkUser = await UserModel.User.findOne({ _id: idUser, name: nameUser });
+        checkUser.status = 'logout';
+        await checkUser.save();
+        res.status(200).json({ message: 'logout is successfull!' });
+      }else {
+        res.status(401).json({ message: 'token is invalid!' });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async register(req, res, next) { // [path: /api/user/register]
     try {
       const { name, email, password } = req.body;
@@ -46,7 +65,7 @@ class User {
         await newUser.save();
         const payload = { idUser: newUser._id, nameUser: newUser.name };
         const { token, refreshToken } = help.getCoupleToken({ payload });
-        res.status(200).json({ message: 'register account successful!', token: `Miru ${token}`, refreshToken: `Miru ${refreshToken}` });
+        res.status(200).json({ message: 'register account successful!', accessToken: `Miru ${token}`, refreshToken: `Miru ${refreshToken}` });
       }else {
         res.status(401).json({ message: 'info invalid!' });
       }
@@ -56,6 +75,22 @@ class User {
       }else {
         res.status(400).json({ message: 'unspecified error!', details: error });
       }
+    }
+  }
+
+  refreshToken(req, res, next) { // [path: /api/user/refresh-token]
+    try {
+      const refreshToken = req.headers['ref-token'];
+      if(refreshToken) {
+        let extractToken = refreshToken.split(' ')[1];
+        const { idUser, nameUser } = jwt.verify(extractToken, process.env.SECRET_KEY_JWT);
+        const { accessToken } = help.getToken({ payload: { idUser, nameUser } });
+        res.status(200).json({ message: 'refresh token is successfull!', token: `Miru ${accessToken}` });
+      }else {
+        res.status(401).json({ message: 'not found header ref-token!' });
+      }
+    } catch (error) {
+      next(error);
     }
   }
 

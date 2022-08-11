@@ -3,10 +3,13 @@ import http from 'http';
 import bodyParser from 'body-parser';
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
+import morgan from 'morgan';
+import cors from 'cors';
 
 import connectMongoDB from './db/connect.js';
 import nodeEvent from './nodeEvent/index.js';
-import configRouter from './router/index.js'; 
+import configRouter from './router/index.js';
+import help from './ultils/index.js'; 
 
 dotenv.config();
 const port = process.env.PORT || 3000;
@@ -16,11 +19,14 @@ const server = http.createServer(app);
 
 const wss = new WebSocketServer({ server, clientTracking: false });
 
+app.use(cors());
+app.use(morgan('dev'));
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 // parse application/json
 app.use(bodyParser.json())
 configRouter(app);
+app.use(help.handleError);
 connectMongoDB(); // config connect to database mongoDB
 
 wss.on('connection', function connection(ws, req) {

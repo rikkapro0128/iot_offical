@@ -4,23 +4,17 @@ class middleware {
 
   auth(req, res, next) {
     const token = req.headers['authorization'];
-    if(typeof token === 'string' && token) {
+    if(token) {
       const extractToken = token.split(' ')[1];
       try {
         const payload = jwt.verify(extractToken, process.env.SECRET_KEY_JWT);
         req.idClientUser = payload.idUser;
         next();
       } catch (error) {
-        if(error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
-          res.status(403).json({ message: 'token is expire!' });
-        }
-        else if(error.name === 'JsonWebTokenError') {
-          res.status(403).json({ message: 'token is invalid!' });
-        }
-        else {
-          res.status(403).json({ message: 'unspecified error!' });
-        }
+        next(error);
       }
+    }else {
+      res.status(401).json({ message: 'not found header authorization!' });
     }
   }
 
