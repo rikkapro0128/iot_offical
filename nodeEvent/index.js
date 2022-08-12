@@ -9,9 +9,9 @@ export default (node, req, connections) => {
     try {
       const dataParse = JSON.parse(data.toString());
       if(dataParse.type_data === '$info_node') {
-        const nodeIsExist = await NodeModel.NodeESP8266.findOne({ macAddress: dataParse.ip_mac });
+        const nodeIsExist = await NodeModel.NodeMCU.findOne({ macAddress: dataParse.ip_mac });
         if(!nodeIsExist) {
-          const newNode =  new NodeModel.NodeESP8266({
+          const newNode =  new NodeModel.NodeMCU({
             ipRemote: ip,
             desc: dataParse.desc,
             typeModel: dataParse.type,

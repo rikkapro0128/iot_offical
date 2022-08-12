@@ -13,7 +13,7 @@ const SensorSheme = new Schema({
   unit: { type: String, require: true },
   pin: { type: String, },
   typeModel: { type: String },
-  byNode: { type: Schema.Types.ObjectId, ref: 'NodeESP8266' }
+  byNode: { type: Schema.Types.ObjectId, ref: 'NodeMCU' }
 }, { 
   createdAt: 'sensor_create_at',
   updatedAt: 'sensor_updated_at' 
@@ -32,19 +32,20 @@ const DeviceSheme = new Schema({
   ],
   unit: { type: String, enum: ['DIGITAL', 'ANALOG', 'ONE_WIRE'], default: 'DIGITAL' },
   typeModel: { type: String },
-  byNode: { type: Schema.Types.ObjectId, ref: 'NodeESP8266' }
+  byNode: { type: Schema.Types.ObjectId, ref: 'NodeMCU' }
 }, { 
   createdAt: 'sensor_create_at',
   updatedAt: 'sensor_updated_at' 
 });
 
-const NodeESP8266Sheme = new Schema({
-  name: { type: String, default: 'ESP8266' },
+const NodeMCUSheme = new Schema({
+  name: { type: String, require: true },
   desc: { type: String, default: 'no-desc' },
-  macAddress: { type: String, require: true },
-  ipRemote: { type: String, require: true },
-  typeModel: { type: String },
+  macAddress: { type: String },
+  ipRemote: { type: String },
+  typeModal: { type: String, require: true },
   configBy: { type: String, default: 'miru' },
+  bindUser: { type: Schema.Types.ObjectId, ref: 'User' },
   sensors: [{ type: Schema.Types.ObjectId, ref: 'Sensor' }],
   devices: [{ type: Schema.Types.ObjectId, ref: 'Device' }]
 }, { 
@@ -69,10 +70,10 @@ DeviceSheme.pre('save', async function (next) {
 
 const Sensor = mongoose.model('Sensor', SensorSheme); 
 const Device = mongoose.model('Device', DeviceSheme); 
-const NodeESP8266 = mongoose.model('NodeESP8266', NodeESP8266Sheme); 
+const NodeMCU = mongoose.model('NodeMCU', NodeMCUSheme); 
 
 export default {
   Sensor,
   Device,
-  NodeESP8266,
+  NodeMCU,
 } 
