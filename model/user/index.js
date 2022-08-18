@@ -17,7 +17,6 @@ import bcrypt from 'bcrypt';
   permission: { type: String, enum: ['user', 'admin', 'mod'] },
   status: { type: String, enum: ['blocked', 'login', 'logout'] }, 
   refreshToken: { type: String },
-  nodeManage: [{ type: Schema.Types.ObjectId, ref: 'NodeMCU' }]
 });
 
 UserSheme.pre('save', async function(next) {
