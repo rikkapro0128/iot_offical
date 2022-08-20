@@ -15,8 +15,7 @@ import bcrypt from 'bcrypt';
   gender: { type: String, enum: ['Nam', 'Nữ'] },
   descYouself: { type: String },
   permission: { type: String, enum: ['user', 'admin', 'mod'] },
-  status: { type: String, enum: ['blocked', 'login', 'logout'] }, 
-  refreshToken: { type: String },
+  status: { type: String, enum: ['blocked', 'login', 'logout'] },
 });
 
 UserSheme.pre('save', async function(next) {

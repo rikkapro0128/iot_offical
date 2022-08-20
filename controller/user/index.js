@@ -5,7 +5,7 @@ import help from '../../ultils/index.js';
 
 class User {
 
-  async login(req, res, next) { // [path: /api/user/login]
+  async login(req, res, next) { // [POST] [path: /api/user/login]
     try {
       const { name, password } = req.body;
       let errorByInfo = false;
@@ -36,7 +36,7 @@ class User {
     }
   }
 
-  async logout(req, res, next) { // [path: /api/user/logout]
+  async logout(req, res, next) { // [POST] [path: /api/user/logout]
     try {
       const token = req.headers['token'];
       if(token) {
@@ -53,7 +53,7 @@ class User {
     }
   }
 
-  async register(req, res, next) { // [path: /api/user/register]
+  async register(req, res, next) { // [POST] [path: /api/user/register]
     try {
       const { name, email, password } = req.body;
       if(name && password) {
@@ -78,7 +78,7 @@ class User {
     }
   }
 
-  refreshToken(req, res, next) { // [path: /api/user/refresh-token]
+  refreshToken(req, res, next) { // [GET] [path: /api/user/refresh-token]
     try {
       const refreshToken = req.headers['ref-token'];
       if(refreshToken) {
@@ -91,6 +91,20 @@ class User {
       }
     } catch (error) {
       next(error);
+    }
+  }
+
+  async getInfo(req, res, next) { // [GET] [path: /api/user/info]
+    try {
+      const idUser = req.idClientUser;
+      const user = await UserModel.User.findById(idUser, '-hash -status').exec();
+      if(user) {
+        res.status(200).json({ message: 'response information user!', user });
+      }else {
+        res.status(401).json({ message: 'user not found!' });
+      }
+    } catch (error) {
+      res.status(401).json({ message: 'something went wrong!' });
     }
   }
 
