@@ -34,6 +34,9 @@ class Node {
       const node = await NodeModel.NodeMCU.findById(idNode);
       if(node) {
         if(node.bindUser.toString() === idUser) {
+          // remove all device & sensor depend-on
+          await NodeModel.Device.deleteMany({ byNode: idNode });
+          await NodeModel.Sensor.deleteMany({ byNode: idNode });
           NodeModel.NodeMCU.findByIdAndRemove(idNode).exec()
           .then(response => {
             res.status(200).json({ message: 'remove node successfull!', idNode });

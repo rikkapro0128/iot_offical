@@ -24,6 +24,25 @@ class help {
     }
   }
 
+  detachBrokenConection({ wss, timeDebound = 5000 }) {
+    const interval = setInterval(function ping() {
+      wss.clients.forEach(function each(ws) {
+        if (ws.isAlive === false) return ws.terminate();
+    
+        ws.isAlive = false;
+        ws.ping();
+      });
+    }, timeDebound);
+
+    wss.on('close', function close() {
+      clearInterval(interval);
+    });
+  }
+
+  checkEventNameIsExist({ nameEvent, mainEvent }) {
+    return mainEvent.eventNames().includes(nameEvent);
+  }
+
 }
 
 export default new help;

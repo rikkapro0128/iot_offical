@@ -5,19 +5,20 @@ import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
 import cors from 'cors';
+import { EventEmitter } from 'events';
 
 import connectMongoDB from './db/connect.js';
-import nodeEvent from './nodeEvent/index.js';
+import socketEvent from './socketEvent/index.js';
 import configRouter from './router/index.js';
 import help from './ultils/index.js'; 
 
 dotenv.config();
 const port = process.env.PORT || 3000;
-const connections = {};
 const app = express();
 const server = http.createServer(app);
+const eventSystem = new EventEmitter();
 
-const wss = new WebSocketServer({ server, clientTracking: false });
+const wss = new WebSocketServer({ server, clientTracking: true });
 
 app.use(cors());
 app.use(morgan('dev'));
@@ -31,9 +32,12 @@ connectMongoDB(); // config connect to database mongoDB
 
 wss.on('connection', function connection(ws, req) {
 
-  nodeEvent(ws, req, connections);
-
+  socketEvent(ws, req, eventSystem);
+  ws.on('pong', function () { this.isAlive = true; });
+  
 });
+
+help.detachBrokenConection({ wss });
 
 server.listen(port, () => {
   console.log(`[💓]Server express listening on port: ${port}`);

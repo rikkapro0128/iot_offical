@@ -27,7 +27,8 @@ const DeviceSheme = new Schema({
     {
       _id: false,
       val: { type: String },
-      gpio: { type: Number }
+      gpio: { type: Number },
+      status: { type: String },
     }
   ],
   unit: { type: String, enum: ['DIGITAL', 'ANALOG', 'ONE_WIRE'], default: 'DIGITAL' },
@@ -46,8 +47,7 @@ const NodeMCUSheme = new Schema({
   typeModal: { type: String, require: true },
   configBy: { type: String, default: 'miru' },
   bindUser: { type: Schema.Types.ObjectId, ref: 'User' },
-  sensors: [{ type: Schema.Types.ObjectId, ref: 'Sensor' }],
-  devices: [{ type: Schema.Types.ObjectId, ref: 'Device' }]
+  nodeStatus: { type: String, enum: ['active', 'disable' ], default: 'disable' },
 }, { 
   createdAt: 'node_create_at',
   updatedAt: 'node_updated_at' 
@@ -58,7 +58,7 @@ DeviceSheme.pre('save', async function (next) {
     const resultPins = this.pins.map(valPin => {
       const pinDetail = diagram.esp8266.find(valDiagram => valPin.val in valDiagram);
       if(pinDetail) {
-        return { val: valPin.val, gpio: Object.values(pinDetail)[0] }
+        return { val: valPin.val, gpio: Object.values(pinDetail)[0], status: valPin?.status || '' }
       }
     });
     this.pins = await Promise.all(resultPins);
