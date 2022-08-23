@@ -1,4 +1,4 @@
-import { NodeModel } from '../../model/index.js';
+import { NodeModel, UserModel } from '../../model/index.js';
 import help from '../../ultils/index.js';
 import { nodeControllDevice } from '../../diagram/eventName.js';
 
@@ -11,6 +11,13 @@ class client {
     this.handleStatusNode = this.handleStatusNode.bind(this);
     this.handleMessageIsComing = this.handleMessageIsComing.bind(this);
     this.handlePayloadSensorSendByNode = this.handlePayloadSensorSendByNode.bind(this);
+  }
+
+  updateStatusClient({ idClient, status }) {
+    UserModel.User.findOneAndUpdate(
+      { _id: idClient },
+      { socketStatus: status }
+    ).exec();
   }
 
   handleStatusNode({ idNode, status }) {

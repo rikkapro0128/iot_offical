@@ -13,9 +13,10 @@ import bcrypt from 'bcrypt';
   email: { type: String },
   age: { type: Number },
   gender: { type: String, enum: ['Nam', 'Nữ'] },
-  descYouself: { type: String },
-  permission: { type: String, enum: ['user', 'admin', 'mod'] },
+  descYouself: { type: String, default: '' },
+  permission: { type: String, enum: ['user', 'admin', 'mod'], default: 'user' },
   status: { type: String, enum: ['blocked', 'login', 'logout'] },
+  socketStatus: { type: String, enum: ['online', 'offline'] },
 });
 
 UserSheme.pre('save', async function(next) {

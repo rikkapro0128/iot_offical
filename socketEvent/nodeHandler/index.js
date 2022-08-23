@@ -26,17 +26,17 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
         console.log(code, reason);
         if (code === 1006) {
           // controller
-          controller.updateStatusNode({ id: idNode, status: "disable" });
+          controller.updateStatusNode({ id: idNode, status: "offline" });
         }
       });
 
       // active for node
       skNode.on("error", (error) => {
-        controller.updateStatusNode({ id: idNode, status: "disable" });
+        controller.updateStatusNode({ id: idNode, status: "offline" });
         console.log(error);
       });
 
-      controller.updateStatusNode({ id: idNode, status: "active" });
+      controller.updateStatusNode({ id: idNode, status: "online" });
 
       skNode.send(
         JSON.stringify({ type: "$message", message: "_NODE_IS_EXIST_" })

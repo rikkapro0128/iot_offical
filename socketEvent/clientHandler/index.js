@@ -16,6 +16,16 @@ export default async function ({ idUser, skClient, mainEvent }) {
       mainEvent.on(clientStatusNode({ id: idUser }), controller.handleStatusNode);
 
       skClient.on('message', controller.handleMessageIsComing);
+      
+      skClient.on('close', () => {
+        controller.updateStatusClient({ idClient: idUser, status: 'offline' });
+      });
+
+      skClient.on('error', () => {
+        controller.updateStatusClient({ idClient: idUser, status: 'offline' });
+      });
+
+      controller.updateStatusClient({ idClient: idUser, status: 'online' });
 
       skClient.send(
         JSON.stringify({ type: "$message", message: "_USER_ID_EXIST_" })

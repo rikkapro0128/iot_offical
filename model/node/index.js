@@ -6,13 +6,18 @@ import diagram from '../../diagram/index.js';
  * Define Schemas
  */
 
+const SensorSampleSheme = new Schema({
+  _id: false,
+  value: { type: Schema.Types.Mixed },
+}, { timestamps: true });
+
 const SensorSheme = new Schema({
   name:  { type: String, require: true },
   desc: { type: String, default: 'no-desc' },
-  value: { type: String, default: '' },
+  sample: [SensorSampleSheme],
   unit: { type: String, require: true },
   pin: { type: String, },
-  typeModel: { type: String },
+  typeModel: { type: String, require: true },
   byNode: { type: Schema.Types.ObjectId, ref: 'NodeMCU' }
 }, { 
   createdAt: 'sensor_create_at',
@@ -29,10 +34,12 @@ const DeviceSheme = new Schema({
       val: { type: String },
       gpio: { type: Number },
       status: { type: String },
+      mode: { type: String },
+      payload: { type: Schema.Types.Mixed },
     }
   ],
   unit: { type: String, enum: ['DIGITAL', 'ANALOG', 'ONE_WIRE'], default: 'DIGITAL' },
-  typeModel: { type: String },
+  typeModel: { type: String, require: true },
   byNode: { type: Schema.Types.ObjectId, ref: 'NodeMCU' }
 }, { 
   createdAt: 'sensor_create_at',
@@ -47,7 +54,7 @@ const NodeMCUSheme = new Schema({
   typeModal: { type: String, require: true },
   configBy: { type: String, default: 'miru' },
   bindUser: { type: Schema.Types.ObjectId, ref: 'User' },
-  nodeStatus: { type: String, enum: ['active', 'disable' ], default: 'disable' },
+  socketStatus: { type: String, enum: ['online', 'offline' ], default: 'offline' },
 }, { 
   createdAt: 'node_create_at',
   updatedAt: 'node_updated_at' 
@@ -58,7 +65,7 @@ DeviceSheme.pre('save', async function (next) {
     const resultPins = this.pins.map(valPin => {
       const pinDetail = diagram.esp8266.find(valDiagram => valPin.val in valDiagram);
       if(pinDetail) {
-        return { val: valPin.val, gpio: Object.values(pinDetail)[0], status: valPin?.status || '' }
+        return { gpio: Object.values(pinDetail)[0], ...valPin }
       }
     });
     this.pins = await Promise.all(resultPins);
