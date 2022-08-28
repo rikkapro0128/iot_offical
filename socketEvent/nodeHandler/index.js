@@ -14,18 +14,13 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
       
       // handle message is comming!
       skNode.on("message", controller.handleMessageIsComming);
-
-      // register event hanlde controll device of this node
-      mainEvent.on(
-        nodeControllDevice({ id: idNode }),
-        controller.sendPayloadToDevice
-      );
       
       // handle socket when node close connection 
       skNode.on("close", (code, reason) => {
         console.log(code, reason);
         if (code === 1006) {
           // controller
+          // skNode.removeEventListener('message', controller.handleMessageIsComming);
           controller.updateStatusNode({ id: idNode, status: "offline" });
         }
       });
@@ -35,6 +30,12 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
         controller.updateStatusNode({ id: idNode, status: "offline" });
         console.log(error);
       });
+
+      // register event hanlde controll device of this node
+      mainEvent.on(
+        nodeControllDevice({ id: idNode }),
+        controller.sendPayloadToDevice
+      );
 
       controller.updateStatusNode({ id: idNode, status: "online" });
 

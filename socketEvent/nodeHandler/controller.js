@@ -4,6 +4,7 @@ import {
   clientStatusNode,
 } from "../../diagram/eventName.js";
 import help from "../../ultils/index.js";
+import diagram from '../../diagram/index.js';
 
 class node {
   constructor(skNode, mainEvent, idNode, idUser, ip) {
@@ -16,39 +17,47 @@ class node {
     this.handleMessageIsComming = this.handleMessageIsComming.bind(this);
   }
 
-  sendPayloadToDevice({ model, pins, idDevice }, skClient) {
+  async sendPayloadToDevice({ model, pins, idDevice }, skClient) {
     // console.log("Node received: ", { model, pins });
-    this.skNode.send(
-      JSON.stringify({ type: "$controll_device", model, pins }),
-      async function (error) {
-        if (!error) {
-          // save data device into device
-          skClient.send(
-            JSON.stringify({
-              type: "$message",
-              message: "_NODE_RECEIVED_PAYLOAD_DEVICE_",
-            })
-          );
-          const searchDevice = await NodeModel.Device.findById(idDevice);
-          searchDevice.pins = searchDevice.pins.map((pinSolo) => {
-            for (const pin of pins) {
-              if (pin.gpio === pinSolo.gpio) {
-                return {
-                  ...pin,
-                  val: pinSolo.val,
-                };
+    const searchDevice = await NodeModel.Device.findById(idDevice);
+    if(!searchDevice) { return skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_NOT_EXIST_' })); }
+    const permitPinControll = pins.filter(valuePin => {
+      const result = searchDevice.pins.find(pinSearch => (pinSearch.val === valuePin.val && pinSearch.gpio === valuePin.gpio));
+      return result ? true : false;
+    })
+    // console.log(permitPinControll);
+    if(permitPinControll.length) {
+      this.skNode.send(
+        JSON.stringify({ type: "$controll_device", model, pins: permitPinControll }),
+        async function (error) {
+          if (!error) {
+            // save data device into device
+            const resultUpdateDevice = pins.map(async (valuePin) => {
+              const searchDevicePayload =
+                await NodeModel.DevicePayload.findOneAndUpdate({
+                  bindDevice: searchDevice._id,
+                  val: valuePin.val,
+                }, {
+                  ...valuePin,
+                });
+              if (searchDevicePayload) {
+                return Promise.resolve(true);
+              } else {
+                const newDevicePayload = new NodeModel.DevicePayload({
+                  bindDevice: searchDevice._id,
+                  ...valuePin
+                });
+                return newDevicePayload.save();
               }
-            }
-            return pinSolo;
-          });
-          await searchDevice.save();
+            });
+            await Promise.all(resultUpdateDevice);
+            skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_IS_UPDATED_', id: idDevice }));
+          }
         }
-        // else {
-        //   console.log(error);
-        //   skClient.send(JSON.stringify({ type: "$message", message: '_NODE_RECEIVED_IS_ERROR_' }));
-        // }
-      }
-    );
+      );
+    }else {
+      skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_PINS_INVALID_' }));
+    }
   }
 
   updateStatusNode({ id, status }) {
@@ -73,7 +82,7 @@ class node {
     const payload = JSON.parse(data.toString());
     try {
       if (payload.type_data === "$info_node") {
-        // console.log(payload.type_data);
+        // console.log(payload);
         NodeModel.NodeMCU.findOneAndUpdate(
           {
             _id: this.idNode,
@@ -86,48 +95,73 @@ class node {
             configBy: payload.config_by,
           }
         ).exec();
-        // reset data sensor & device old
-        // await NodeModel.Device.deleteMany({ byNode: this.idNode });
-        // await NodeModel.Sensor.deleteMany({ byNode: this.idNode });
 
-        const resultSensor = payload.sensor_manager.map(async (value, index) => {
-          // frame data => [name|type_model|uint|desc|pin]
-          const valueSensor = value.split("|");
-          const dataSensor = {
-            name: valueSensor[0],
-            desc: valueSensor[3] !== "NONE" ? valueSensor[3] : "no-desc",
-            pin: valueSensor[4] !== "NONE" ? valueSensor[3] : "no-pin",
-            unit: valueSensor[2],
-            typeModel: valueSensor[1],
-            byNode: this.idNode,
-          };
-          let findSensor = await NodeModel.Sensor.findOneAndUpdate({ typeModel: valueSensor[1] }, dataSensor);
-          if(findSensor) {
-            return Promise.resolve(true);
-          }else {
-            const newSensor = new NodeModel.Sensor(dataSensor);
-            return newSensor.save();
+        const resultSensor = payload.sensor_manager.map(
+          async (value, index) => {
+            // frame data => [name|type_model|uint|desc|pin]
+            const valueSensor = value.split("|");
+            const dataSensor = {
+              name: valueSensor[0],
+              desc: valueSensor[3] !== "NONE" ? valueSensor[3] : "no-desc",
+              pin: valueSensor[4] !== "NONE" ? valueSensor[3] : "no-pin",
+              unit: valueSensor[2],
+              typeModel: valueSensor[1],
+              byNode: this.idNode,
+            };
+            let findSensor = await NodeModel.Sensor.findOneAndUpdate(
+              { typeModel: valueSensor[1] },
+              dataSensor
+            );
+            if (findSensor) {
+              return Promise.resolve(true);
+            } else {
+              const newSensor = new NodeModel.Sensor(dataSensor);
+              return newSensor.save();
+            }
           }
-        });
-        const resultDevice = payload.device_manager.map(async (value, index) => {
-          // frame data => [name|type_model|{DIGITAL-ANALOG-ONE_WIRE}|desc|{muti-solo}|{list_pin}|NEW]
-          const valueDevice = value.split("|");
-          const dataDevice = {
-            name: valueDevice[0],
-            desc: valueDevice[3] !== "NONE" ? valueDevice[3] : "no-desc",
-            unit: valueDevice[2],
-            typeModel: valueDevice[1],
-            byNode: this.idNode,
-          };
-          let findDevice = await NodeModel.Device.findOneAndUpdate({ typeModel: valueDevice[1] }, dataDevice);
-          if(findDevice) {
-            return Promise.resolve(true);
-          }else {
-            const newDevice = new NodeModel.Device(dataDevice);
-            newDevice.pins = valueDevice[4] === "MUTI" ? valueDevice[5].split("+").map((val) => { return { val }; }) : [{ val: valueDevice[5] }];
-            return newDevice.save();
+        );
+        const resultDevice = payload.device_manager.map(
+          async (value, index) => {
+            // frame data => [name|type_model|{DIGITAL-ANALOG-ONE_WIRE}|desc|{muti-solo}|{list_pin}|NEW]
+            const valueDevice = value.split("|");
+            // create update object for device
+            const dataDevice = {
+              name: valueDevice[0],
+              desc: valueDevice[3] !== "NONE" ? valueDevice[3] : "no-desc",
+              unit: valueDevice[2],
+              typeModel: valueDevice[1],
+              byNode: this.idNode,
+              pins:
+                valueDevice[4] === "MUTI"
+                  ? valueDevice[5].split("+").map((val) => {
+                      return { val };
+                    })
+                  : [{ val: valueDevice[5] }],
+            };
+            // update gpio pins
+            dataDevice.pins = dataDevice.pins.map(valPin => {
+              const pinDetail = diagram.esp8266.find(
+                (valDiagram) => valPin.val in valDiagram
+              );
+              if (pinDetail) {
+                return { gpio: Object.values(pinDetail)[0], ...valPin };
+              }
+            });
+            let findDevice = await NodeModel.Device.findOneAndUpdate(
+              { typeModel: valueDevice[1] },
+              dataDevice
+            );
+            if (findDevice) {
+              // for update 
+              return findDevice.save();
+            } else {
+              // for create new
+              const newDevice = new NodeModel.Device(dataDevice);
+              return newDevice.save();
+            }
           }
-        });
+        );
+        // update done for all sensor and all device
         await Promise.all([...resultSensor, ...resultDevice]);
         this.skNode.send(
           JSON.stringify({ type: "$message", message: "_NODE_IS_UPDATE_" })
@@ -138,9 +172,12 @@ class node {
           byNode: this.idNode,
           typeModel: payload.type_model,
         });
-        if (sensor) { 
-          sensor.sample.push({ value: { temperature: payload.temp, humidity: payload.humi }})
-          sensor
+        if (sensor) {
+          const newSampleSesor = new NodeModel.SensorSample({
+            value: { temperature: payload.temp, humidity: payload.humi },
+            bindSensor: sensor._id,
+          });
+          newSampleSesor
             .save()
             .then(async () => {
               const eventNameForClient = clientPayloadSensor({
@@ -170,7 +207,7 @@ class node {
               this.skNode.send(
                 JSON.stringify({
                   type: "$message",
-                  message: "_SENSOR_IS_UPDATE_",
+                  message: "_VALUE_SENSOR_IS_UPDATE_",
                 })
               );
             })
@@ -179,13 +216,26 @@ class node {
                 this.skNode.send(
                   JSON.stringify({
                     type: "$message",
-                    message: "_SENSOR_IS_REMOVE_",
+                    message: "_VALUE_SENSOR_CAN'T_SAVE_",
                   })
                 );
               } else {
                 console.log(error);
               }
             });
+        }
+      }else if (payload.type_data === "$init_device") {
+        const getDevice = await NodeModel.Device.find({ byNode: this.idNode }, 'typeModel _id');
+        if(getDevice.length > 0) {
+          const listPayloadDevice = getDevice.map(async ({ _id, typeModel }) => {
+            const payloadDevice = await NodeModel.DevicePayload.find({ bindDevice: _id }, 'val gpio mode payload status');
+            return {
+              model: typeModel,
+              pins: payloadDevice,
+            }
+          });
+          const initPayloadDevice = await Promise.all(listPayloadDevice);
+          this.skNode.send(JSON.stringify({ type: '$init_device', payload: initPayloadDevice }));
         }
       }
     } catch (error) {
