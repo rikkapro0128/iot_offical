@@ -10,6 +10,7 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
     const checkNode = await NodeModel.NodeMCU.findById(idNode);
     if (checkNode) {
       // if node is exist
+      const eventControllDevice = nodeControllDevice({ id: idNode });
       const controller = new controllerNode(skNode, mainEvent, idNode, idUser, ip);
       
       // handle message is comming!
@@ -20,8 +21,8 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
         console.log(code, reason);
         if (code === 1006) {
           // controller
-          // skNode.removeEventListener('message', controller.handleMessageIsComming);
           controller.updateStatusNode({ id: idNode, status: "offline" });
+          mainEvent.removeEventListener(eventControllDevice, controller.sendPayloadToDevice);
         }
       });
 
@@ -29,13 +30,11 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
       skNode.on("error", (error) => {
         controller.updateStatusNode({ id: idNode, status: "offline" });
         console.log(error);
+        skNode.terminate();
       });
 
       // register event hanlde controll device of this node
-      mainEvent.on(
-        nodeControllDevice({ id: idNode }),
-        controller.sendPayloadToDevice
-      );
+      mainEvent.on(eventControllDevice, controller.sendPayloadToDevice);
 
       controller.updateStatusNode({ id: idNode, status: "online" });
 
@@ -52,7 +51,6 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
       );
     }
   } catch (error) {
-    console.log(error);
     if (error.name === "CastError") {
       skNode.send(
         JSON.stringify({
@@ -61,6 +59,7 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
         })
       );
     } else {
+      console.log(error);
       skNode.send(
         JSON.stringify({
           type: "$message",

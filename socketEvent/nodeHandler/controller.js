@@ -8,6 +8,7 @@ import diagram from '../../diagram/index.js';
 
 class node {
   constructor(skNode, mainEvent, idNode, idUser, ip) {
+    this.statusNodeResponse = false;
     this.skNode = skNode;
     this.mainEvent = mainEvent;
     this.idNode = idNode;
@@ -27,34 +28,27 @@ class node {
     })
     // console.log(permitPinControll);
     if(permitPinControll.length) {
-      this.skNode.send(
-        JSON.stringify({ type: "$controll_device", model, pins: permitPinControll }),
-        async function (error) {
-          if (!error) {
-            // save data device into device
-            const resultUpdateDevice = pins.map(async (valuePin) => {
-              const searchDevicePayload =
-                await NodeModel.DevicePayload.findOneAndUpdate({
-                  bindDevice: searchDevice._id,
-                  val: valuePin.val,
-                }, {
-                  ...valuePin,
-                });
-              if (searchDevicePayload) {
-                return Promise.resolve(true);
-              } else {
-                const newDevicePayload = new NodeModel.DevicePayload({
-                  bindDevice: searchDevice._id,
-                  ...valuePin
-                });
-                return newDevicePayload.save();
-              }
-            });
-            await Promise.all(resultUpdateDevice);
-            skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_IS_UPDATED_', id: idDevice }));
-          }
+      this.skNode.send(JSON.stringify({ type: "$controll_device", model, pins: permitPinControll }));
+      const resultUpdateDevice = pins.map(async (valuePin) => {
+        const searchDevicePayload =
+          await NodeModel.DevicePayload.findOneAndUpdate({
+            bindDevice: searchDevice._id,
+            val: valuePin.val,
+          }, {
+            ...valuePin,
+          });
+        if (searchDevicePayload) {
+          return Promise.resolve(true);
+        } else {
+          const newDevicePayload = new NodeModel.DevicePayload({
+            bindDevice: searchDevice._id,
+            ...valuePin
+          });
+          return newDevicePayload.save();
         }
-      );
+      });
+      await Promise.all(resultUpdateDevice);
+      skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_IS_UPDATED_', id: idDevice }));
     }else {
       skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_PINS_INVALID_' }));
     }

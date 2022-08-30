@@ -1,10 +1,61 @@
 import { UserModel, NodeModel } from '../../model/index.js';
 
 class Node {
+
+  async provider(req, res, next) { // [GET]: /api/node/:id
+    try {
+      const idNode = req.params.id;
+      const stateSensors = req.query.sensors;
+      const stateDevices = req.query.devices;
+      const responseData = {};
+      const resultPromise = [];
+      if(idNode) {
+        responseData.idNode = idNode;
+        if(stateSensors === 'true') {
+          const listSensor = NodeModel.Sensor.find({ byNode: idNode }).then(async (sensors) => {
+            const resultSensors = sensors.map(async (sensor) => {
+              const sampleSensor = await NodeModel.SensorSample.findOne({ bindSensor: sensor._id }, 'value updatedAt createdAt').sort({ 'updateAt': -1 });
+              return {
+                sensor,
+                sampleSensor
+              }
+            })
+            return Promise.all(resultSensors);
+          });
+          resultPromise.push(listSensor);
+        }
+        if(stateDevices === 'true') {
+          const listDevice = NodeModel.Device.find({ byNode: idNode }, 'name unit typeModel').then(async (devices) => {
+            const resultDevices = devices.map(async (device) => {
+              const sampleDevice = await NodeModel.DevicePayload.find({ bindDevice: device._id });         
+              return {
+                device,
+                sampleDevice
+              }
+            });
+            return Promise.all(resultDevices);
+          });
+          resultPromise.push(listDevice);
+        }
+        const result = await Promise.all(resultPromise);
+        responseData.sensors = result[0] ? result[0] : undefined;
+        responseData.devices = result[1] ? result[1] : undefined;
+        res.status(200).json({ message: 'response data from server!', responseData });
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(401).json({ message: 'something went wrong!' });
+    }
+  }
+
   async list(req, res, next) { // [GET]: /api/node/list
-    const idUser = req.idClientUser;
-    const listNode = await NodeModel.NodeMCU.find({ bindUser: idUser }, '-bindUser -configBy -devices -sensors');
-    res.status(200).json({ message: 'response data from server!', node_list: listNode });
+    try {
+      const idUser = req.idClientUser;
+      const listNode = await NodeModel.NodeMCU.find({ bindUser: idUser }, '-bindUser -configBy -devices -sensors');
+      res.status(200).json({ message: 'response data from server!', node_list: listNode });
+    } catch (error) {
+      res.status(401).json({ message: 'something went wrong!' });
+    }
   }
 
   async create(req, res, next) { // [POST]: /api/node/create

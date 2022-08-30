@@ -11,9 +11,11 @@ export default async (wsk, req, mainEvent) => {
     const idNode = req.headers['id-node'];
     const findNode = await NodeModel.NodeMCU.findById(idNode);
     nodeHandler({ ip, skNode: wsk, idNode, mainEvent, idUser: findNode.bindUser });
-  }else if(checkLocation === 'client') {
-    const idClient = req.headers['id-client'];
-    clientHandler({ idUser: idClient, skClient: wsk, mainEvent });
+  }else {
+    const idClient = new URL('http://localhost' + req.url).searchParams.get('id-client');
+    if(idClient) {
+      clientHandler({ idUser: idClient, skClient: wsk, mainEvent });
+    }
   }
 
 }

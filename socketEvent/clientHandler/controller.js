@@ -43,11 +43,13 @@ class client {
             const eventNameForNode = nodeControllDevice({ id: idNode });
             const isHaveEvent = help.checkEventNameIsExist({ nameEvent: eventNameForNode , mainEvent: this.mainEvent });
             if(isHaveEvent) {
+
               const statusResponse = this.mainEvent.emit(eventNameForNode, { 
                 idDevice,
                 model: checkDeviceBindingNode.typeModel,
                 pins: payload.pins
               }, this.skClient);
+
               if(!statusResponse) {
                 this.skClient.send(JSON.stringify({ type: "$message", message: "_NODE_NOT_LISTEN_" }));
               }

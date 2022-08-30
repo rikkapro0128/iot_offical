@@ -9,20 +9,25 @@ export default async function ({ idUser, skClient, mainEvent }) {
   try {
     const checkUser = await UserModel.User.findById(idUser);
     if(checkUser) {
+      const eventPayloadSensor = clientPayloadSensor({ id: idUser });
+      const eventStatusNode = clientStatusNode({ id: idUser });
       const controller = new ControllClient(skClient, idUser, mainEvent);
       
-      mainEvent.on(clientPayloadSensor({ id: idUser }), controller.handlePayloadSensorSendByNode);
+      mainEvent.on(eventPayloadSensor, controller.handlePayloadSensorSendByNode);
 
-      mainEvent.on(clientStatusNode({ id: idUser }), controller.handleStatusNode);
+      mainEvent.on(eventStatusNode, controller.handleStatusNode);
 
       skClient.on('message', controller.handleMessageIsComing);
       
       skClient.on('close', () => {
         controller.updateStatusClient({ idClient: idUser, status: 'offline' });
+        mainEvent.removeListener(eventPayloadSensor, controller.handlePayloadSensorSendByNode);
+        mainEvent.removeListener(eventStatusNode, controller.handleStatusNode);
       });
 
       skClient.on('error', () => {
         controller.updateStatusClient({ idClient: idUser, status: 'offline' });
+        skClient.terminate();
       });
 
       controller.updateStatusClient({ idClient: idUser, status: 'online' });
@@ -37,7 +42,16 @@ export default async function ({ idUser, skClient, mainEvent }) {
     }
     
   } catch (error) {
-    console.log(error);
+    if (error.name === "CastError") {
+      skClient.send(
+        JSON.stringify({
+          type: "$message",
+          message: "_CLIENT_ID_INVALID_",
+        })
+        );
+    }else {
+      console.log(error);
+    }
   }
 
 }
