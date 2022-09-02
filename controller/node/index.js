@@ -11,6 +11,9 @@ class Node {
       const resultPromise = [];
       if(idNode) {
         responseData.idNode = idNode;
+        NodeModel.NodeMCU.findById(idNode, 'socketStatus').then((node) => {
+          responseData.socketStatus = node.socketStatus
+        });
         if(stateSensors === 'true') {
           const listSensor = NodeModel.Sensor.find({ byNode: idNode }).then(async (sensors) => {
             const resultSensors = sensors.map(async (sensor) => {

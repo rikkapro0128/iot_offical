@@ -12,6 +12,11 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
       // if node is exist
       const eventControllDevice = nodeControllDevice({ id: idNode });
       const controller = new controllerNode(skNode, mainEvent, idNode, idUser, ip);
+
+      controller.updateStatusNode({ id: idNode, status: "online" });
+
+      // register event hanlde controll device of this node
+      mainEvent.on(eventControllDevice, controller.sendPayloadToDevice);
       
       // handle message is comming!
       skNode.on("message", controller.handleMessageIsComming);
@@ -22,7 +27,6 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
         if (code === 1006) {
           // controller
           controller.updateStatusNode({ id: idNode, status: "offline" });
-          mainEvent.removeEventListener(eventControllDevice, controller.sendPayloadToDevice);
         }
       });
 
@@ -32,11 +36,6 @@ export default async function ({ skNode, ip, idNode, mainEvent, idUser }) {
         console.log(error);
         skNode.terminate();
       });
-
-      // register event hanlde controll device of this node
-      mainEvent.on(eventControllDevice, controller.sendPayloadToDevice);
-
-      controller.updateStatusNode({ id: idNode, status: "online" });
 
       skNode.send(
         JSON.stringify({ type: "$message", message: "_NODE_IS_EXIST_" })

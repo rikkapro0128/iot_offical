@@ -19,7 +19,7 @@ export default async function ({ idUser, skClient, mainEvent }) {
 
       skClient.on('message', controller.handleMessageIsComing);
       
-      skClient.on('close', () => {
+      skClient.on('close', () => { 
         controller.updateStatusClient({ idClient: idUser, status: 'offline' });
         mainEvent.removeListener(eventPayloadSensor, controller.handlePayloadSensorSendByNode);
         mainEvent.removeListener(eventStatusNode, controller.handleStatusNode);

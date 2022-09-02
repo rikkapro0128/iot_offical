@@ -6,9 +6,9 @@ import {
 import help from "../../ultils/index.js";
 import diagram from '../../diagram/index.js';
 
+let statusNodeResponse = true;
 class node {
   constructor(skNode, mainEvent, idNode, idUser, ip) {
-    this.statusNodeResponse = false;
     this.skNode = skNode;
     this.mainEvent = mainEvent;
     this.idNode = idNode;
@@ -27,7 +27,7 @@ class node {
       return result ? true : false;
     })
     // console.log(permitPinControll);
-    if(permitPinControll.length) {
+    if(statusNodeResponse) {
       this.skNode.send(JSON.stringify({ type: "$controll_device", model, pins: permitPinControll }));
       const resultUpdateDevice = pins.map(async (valuePin) => {
         const searchDevicePayload =
@@ -54,11 +54,12 @@ class node {
     }
   }
 
-  updateStatusNode({ id, status }) {
-    NodeModel.NodeMCU.findOneAndUpdate(
+  async updateStatusNode({ id, status }) {
+    await NodeModel.NodeMCU.findOneAndUpdate(
       { _id: id },
       { socketStatus: status }
-    ).exec();
+    );
+    console.log(status);
     const eventNameForClient = clientStatusNode({ id: this.idUser });
     const isHaveEvent = help.checkEventNameIsExist({
       nameEvent: eventNameForClient,
@@ -231,6 +232,8 @@ class node {
           const initPayloadDevice = await Promise.all(listPayloadDevice);
           this.skNode.send(JSON.stringify({ type: '$init_device', payload: initPayloadDevice }));
         }
+      }else if(payload.type_data === "$response" && payload.message === '_NODE_RECEIVED_PAYLOAD_') {
+        statusNodeResponse = true;
       }
     } catch (error) {
       console.log(error);
