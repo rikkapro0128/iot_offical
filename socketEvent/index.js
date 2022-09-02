@@ -10,7 +10,11 @@ export default async (wsk, req, mainEvent) => {
   if(checkLocation === 'node') {
     const idNode = req.headers['id-node'];
     const findNode = await NodeModel.NodeMCU.findById(idNode);
-    nodeHandler({ ip, skNode: wsk, idNode, mainEvent, idUser: findNode.bindUser });
+    if(findNode) {
+      nodeHandler({ ip, skNode: wsk, idNode, mainEvent, idUser: findNode.bindUser });
+    }else {
+      // terminate this socket from mcu 
+    }
   }else {
     const idClient = new URL('http://localhost' + req.url).searchParams.get('id-client');
     if(idClient) {

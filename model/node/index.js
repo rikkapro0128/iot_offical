@@ -42,10 +42,9 @@ const DeviceShema = new Schema(
   {
     name: { type: String, require: true },
     desc: { type: String, default: "no-desc" },
-    value: { type: String, default: "" },
     pins: [
       { 
-        id: false,
+        _id: false,
         val: { type: String },
         gpio: { type: Number }, 
       }

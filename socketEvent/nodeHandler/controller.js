@@ -59,7 +59,6 @@ class node {
       { _id: id },
       { socketStatus: status }
     );
-    console.log(status);
     const eventNameForClient = clientStatusNode({ id: this.idUser });
     const isHaveEvent = help.checkEventNameIsExist({
       nameEvent: eventNameForClient,

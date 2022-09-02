@@ -17,7 +17,7 @@ class Node {
         if(stateSensors === 'true') {
           const listSensor = NodeModel.Sensor.find({ byNode: idNode }).then(async (sensors) => {
             const resultSensors = sensors.map(async (sensor) => {
-              const sampleSensor = await NodeModel.SensorSample.findOne({ bindSensor: sensor._id }, 'value updatedAt createdAt').sort({ 'updateAt': -1 });
+              const sampleSensor = await NodeModel.SensorSample.findOne({ bindSensor: sensor._id }).sort({ 'updateAt': -1 });
               return {
                 sensor,
                 sampleSensor
@@ -28,12 +28,15 @@ class Node {
           resultPromise.push(listSensor);
         }
         if(stateDevices === 'true') {
-          const listDevice = NodeModel.Device.find({ byNode: idNode }, 'name unit typeModel').then(async (devices) => {
+          const listDevice = NodeModel.Device.find({ byNode: idNode }).then(async (devices) => {
             const resultDevices = devices.map(async (device) => {
-              const sampleDevice = await NodeModel.DevicePayload.find({ bindDevice: device._id });         
+              const resultPins = device.pins.map(async ({ val, gpio }) => {
+                const resultPayload = await NodeModel.DevicePayload.findOne({ bindDevice: device._id, val, gpio });         
+                return resultPayload ? resultPayload : { val, gpio };
+              })
               return {
-                device,
-                sampleDevice
+                ...device.toObject(),
+                pins: await Promise.all(resultPins),
               }
             });
             return Promise.all(resultDevices);
