@@ -109,6 +109,52 @@ class Node {
       res.status(401).json({ message: 'something went wrong!' });
     }
   }
+
+  async chartSensor(req, res, next) { // [GET]: /api/node/sensor?timeline={hour|date|week|month}
+    const timeline = req.query.timeline;
+    const sort = req.query.sort || 'asc'; // sortby: [asc: ascending {or} desc: descending]
+    const id = req.params.id;
+    try {
+      if(!timeline) { return res.status(401).json({ message: 'query url {timeline} not exist!' }); }
+      if(!id) { return res.status(401).json({ message: 'params {id} not exist!' }); }
+
+      switch (timeline) {
+        case 'hour':
+          const range = parseInt(req.query.range) || 5; // sortby: [asc: ascending {or} desc: descending]
+          let timestampStart = Date.now() - (3600 * 1000);
+          const timestampRange = range * 60 * 1000;
+          const timeScan = (time) => ({ hour: new Date(time).getHours(), min: new Date(time).getMinutes() })
+          let payloadSensorOnehour = await NodeModel.SensorSample.find({ bindSensor: id, createdAt: { $gt: new Date(timestampStart) } });
+          const tranformPayloadSensor = payloadSensorOnehour.map((payload, index) => {
+
+            const timeTemp = timeScan(timestampStart);
+            const datePayload = { hour: new Date(payload.createdAt).getHours(), min: new Date(payload.createdAt).getMinutes() }
+
+            if(timeTemp.hour === datePayload.hour && timeTemp.min === datePayload.min) {
+              timestampStart = timestampStart + timestampRange
+              const timeAt = `${timeTemp.hour}:${timeTemp.min < 10 ? `0${timeTemp.min}` : timeTemp.min}`
+              return {
+                timeAt,
+                ...payload.toObject()
+              }
+            }else {
+              return null
+            }
+          }).filter(payload => payload !== null);
+          res.status(200).json({ message: 'response payload chart successfull!', payload: (sort === 'desc') ? tranformPayloadSensor.reverse() : tranformPayloadSensor });
+          break;
+      
+        default:
+          res.status(401).json({ message: 'query url {timeline} not invalid!' });
+          break;
+      }
+
+    } catch (error) {
+      console.log(error);
+      res.status(401).json({ message: 'something went wrong!' });
+    }
+  }
+
 }
 
 export default new Node;
