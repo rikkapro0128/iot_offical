@@ -13,7 +13,7 @@ export default async (wsk, req, mainEvent) => {
     if(findNode) {
       nodeHandler({ ip, skNode: wsk, idNode, mainEvent, idUser: findNode.bindUser });
     }else {
-      // terminate this socket from mcu 
+      // terminate this socket from mcu
     }
   }else {
     const idClient = new URL('http://localhost' + req.url).searchParams.get('id-client');
