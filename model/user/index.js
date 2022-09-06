@@ -12,7 +12,7 @@ import bcrypt from 'bcrypt';
   nickName: { type: String },
   email: { type: String },
   age: { type: Number },
-  gender: { type: String, enum: ['Nam', 'Nữ'] },
+  gender: { type: String, enum: ['Nam', 'Nữ'], default: 'Nam' },
   descYouself: { type: String, default: '' },
   permission: { type: String, enum: ['user', 'admin', 'mod'], default: 'user' },
   status: { type: String, enum: ['blocked', 'login', 'logout'] },

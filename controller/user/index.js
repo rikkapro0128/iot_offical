@@ -108,6 +108,30 @@ class User {
     }
   }
 
+  async changePassword(req, res, next) {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      const idUser = req.idClientUser;
+      if(!oldPassword) { res.status(403).json({ message: 'field {oldPassword} is undefined!' }); }
+      if(!newPassword) { res.status(403).json({ message: 'field {newPassword} is undefined!' }); }
+      // next to change password
+      const getUser = await UserModel.User.findById(idUser, 'hash');
+      const isCorrect = bcrypt.compareSync(oldPassword, getUser.hash); // true
+      if(isCorrect) {
+        // change password sucessfull
+        getUser.password = newPassword;
+        await getUser.save()
+        res.status(200).json({ message: 'change pass successful!' });
+      }else {
+        res.status(403).json({ message: 'field {oldPassword} is wrong!' })
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(401).json({ message: 'something went wrong!' });
+    }
+  }
+
 }
+
 
 export default new User;
