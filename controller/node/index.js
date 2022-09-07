@@ -280,7 +280,7 @@ class Node {
           });
         });
         resultQuery = await Promise.all(resultQuery);
-        resultQuery = resultQuery.filter(query => query !== null);
+        resultQuery = resultQuery.filter((query) => query !== null);
         res.status(200).json({
           message: "response payload chart successfull!",
           payload: resultQuery,
@@ -290,6 +290,31 @@ class Node {
       }
     } catch (error) {
       console.log(error);
+      res.status(401).json({ message: "something went wrong!" });
+    }
+  }
+
+  async updateNode(req, res, next) {
+    try {
+      const idUser = req.idClientUser;
+      const idNode = req.params.id;
+      const node = await NodeModel.NodeMCU.findById(idNode);
+      if (node) {
+        if (node.bindUser.toString() === idUser) {
+          // update node is here
+          const payload = req.body;
+          for (var key in payload) {
+            node[key] = payload[key];
+          }
+          await node.save();
+          res.status(200).json({ message: "update node successfull!" });
+        } else {
+          return res
+            .status(403)
+            .json({ message: "You not permission update this node!", idNode });
+        }
+      }
+    } catch (error) {
       res.status(401).json({ message: "something went wrong!" });
     }
   }

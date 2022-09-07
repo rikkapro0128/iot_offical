@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 import bcrypt from 'bcrypt';
+import { defaultAvatar } from '../../diagram/avatar.js';
 
 /**
  * Define Schemas
@@ -9,6 +10,10 @@ import bcrypt from 'bcrypt';
  const UserSheme = new Schema({
   name: { type: String, unique: true, require: true },
   hash: { type: String, require: true },
+  avatar: {
+    type: { type: String, enum: ['default', 'upload'], default: 'default' },
+    name: { type: String, default: defaultAvatar[0] },
+  },
   nickName: { type: String },
   email: { type: String },
   age: { type: Number },
