@@ -1,6 +1,6 @@
 import ControllClient from './controller.js';
 import { UserModel } from '../../model/index.js';
-import { clientPayloadSensor, clientStatusNode } from '../../diagram/eventName.js';
+import { clientPayloadSensor, clientStatusNode, clientResponseDevice } from '../../diagram/eventName.js';
 
 export default async function ({ idUser, skClient, mainEvent }) {
   
@@ -11,18 +11,21 @@ export default async function ({ idUser, skClient, mainEvent }) {
     if(checkUser) {
       const eventPayloadSensor = clientPayloadSensor({ id: idUser });
       const eventStatusNode = clientStatusNode({ id: idUser });
+      const eventResponseDevice = clientResponseDevice({ id: idUser });
+
       const controller = new ControllClient(skClient, idUser, mainEvent);
       
       mainEvent.on(eventPayloadSensor, controller.handlePayloadSensorSendByNode);
-
       mainEvent.on(eventStatusNode, controller.handleStatusNode);
+      mainEvent.on(eventResponseDevice, controller.handleResponseDevice);
 
       skClient.on('message', controller.handleMessageIsComing);
       
       skClient.on('close', () => { 
         controller.updateStatusClient({ idClient: idUser, status: 'offline' });
-        mainEvent.removeListener(eventPayloadSensor, controller.handlePayloadSensorSendByNode);
         mainEvent.removeListener(eventStatusNode, controller.handleStatusNode);
+        mainEvent.removeListener(eventResponseDevice, controller.handleResponseDevice);
+        mainEvent.removeListener(eventPayloadSensor, controller.handlePayloadSensorSendByNode);
       });
 
       skClient.on('error', () => {

@@ -8,9 +8,14 @@ class client {
     this.skClient = skClient;
     this.id = id;
     this.mainEvent = mainEvent;
+    this.handleResponseDevice = this.handleResponseDevice.bind(this);
     this.handleStatusNode = this.handleStatusNode.bind(this);
     this.handleMessageIsComing = this.handleMessageIsComing.bind(this);
     this.handlePayloadSensorSendByNode = this.handlePayloadSensorSendByNode.bind(this);
+  }
+
+  handleResponseDevice(payload) {
+    this.skClient.send(JSON.stringify({ type: "$response_devices", message: '_DEVICE_IS_UPDATED_', payload }));
   }
 
   updateStatusClient({ idClient, status }) {

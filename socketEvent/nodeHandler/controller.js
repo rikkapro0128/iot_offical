@@ -1,12 +1,12 @@
 import { NodeModel } from "../../model/index.js";
 import {
-  clientPayloadSensor,
   clientStatusNode,
+  clientPayloadSensor,
+  clientResponseDevice,
 } from "../../diagram/eventName.js";
 import help from "../../ultils/index.js";
 import diagram from '../../diagram/index.js';
 
-let statusNodeResponse = true;
 class node {
   constructor(skNode, mainEvent, idNode, idUser, ip) {
     this.skNode = skNode;
@@ -27,7 +27,7 @@ class node {
       return result ? true : false;
     })
     // console.log(permitPinControll);
-    if(statusNodeResponse) {
+    if(permitPinControll.length > 0) {
       this.skNode.send(JSON.stringify({ type: "$controll_device", model, pins: permitPinControll }));
       const resultUpdateDevice = pins.map(async (valuePin) => {
         const searchDevicePayload =
@@ -38,24 +38,26 @@ class node {
             ...valuePin,
           });
         if (searchDevicePayload) {
-          return Promise.resolve(true);
+          return Promise.resolve(searchDevicePayload.toObject());
         } else {
           const newDevicePayload = new NodeModel.DevicePayload({
             bindDevice: searchDevice._id,
             ...valuePin
           });
-          return newDevicePayload.save();
+          await newDevicePayload.save();
+          return Promise.resolve(newDevicePayload.toObject());
         }
       });
       await Promise.all(resultUpdateDevice);
-      skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_IS_UPDATED_', id: idDevice }));
+      // skClient.send(JSON.stringify({ type: "$response_devices", message: '_DEVICE_IS_UPDATED_', id: idDevice, result: general }));
     }else {
       skClient.send(JSON.stringify({ type: "$message", message: '_DEVICE_PINS_INVALID_' }));
     }
   }
 
-  async updateStatusNode({ id, status }) {
-    await NodeModel.NodeMCU.findOneAndUpdate(
+  async updateStatusNode({ id, status, type }) {
+    // searchNode.socketStatus
+    const searchNode = await NodeModel.NodeMCU.findOneAndUpdate(
       { _id: id },
       { socketStatus: status }
     );
@@ -77,18 +79,21 @@ class node {
     try {
       if (payload.type_data === "$info_node") {
         // console.log(payload);
-        NodeModel.NodeMCU.findOneAndUpdate(
+        const NodeSearch = await NodeModel.NodeMCU.findOne(
           {
             _id: this.idNode,
-          },
-          {
-            ipRemote: this.ip,
-            desc: payload.desc,
-            typeModel: payload.type,
-            macAddress: payload.ip_mac,
-            configBy: payload.config_by,
           }
-        ).exec();
+        )
+        if(!NodeSearch.overwrite) {
+
+          NodeSearch.ipRemote = this.ip;
+          NodeSearch.desc = payload.desc;
+          NodeSearch.typeModel = payload.type;
+          NodeSearch.macAddress = payload.ip_mac;
+          NodeSearch.configBy = payload.config_by;
+
+          await NodeSearch.save();
+        }
 
         const resultSensor = payload.sensor_manager.map(
           async (value, index) => {
@@ -168,7 +173,7 @@ class node {
         });
         if (sensor) {
           const newSampleSesor = new NodeModel.SensorSample({
-            value: { temperature: payload.temp, humidity: payload.humi },
+            value: payload.value,
             bindSensor: sensor._id,
           });
           newSampleSesor
@@ -180,12 +185,12 @@ class node {
               const isHaveEvent = help.checkEventNameIsExist({
                 nameEvent: eventNameForClient,
                 mainEvent: this.mainEvent,
-              });
+              }); 
               if (isHaveEvent) {
                 const statusResponse = this.mainEvent.emit(eventNameForClient, {
-                  model: sensor.typeModel,
+                  model: payload.type_model,
                   name: sensor.name,
-                  value: { temperature: payload.temp, humidity: payload.humi },
+                  value: newSampleSesor.value,
                   unit: sensor.unit,
                   idSensor: sensor._id,
                 });
@@ -232,7 +237,16 @@ class node {
           this.skNode.send(JSON.stringify({ type: '$init_device', payload: initPayloadDevice }));
         }
       }else if(payload.type_data === "$response" && payload.message === '_NODE_RECEIVED_PAYLOAD_') {
-        statusNodeResponse = true;
+        const payloadDevices = JSON.parse(payload.payload);
+        // send response to skClient
+        const eventResponseClient = clientResponseDevice({ id: this.idUser });
+        const isHaveEvent = help.checkEventNameIsExist({ nameEvent: eventResponseClient , mainEvent: this.mainEvent });
+        if(isHaveEvent) {
+          this.mainEvent.emit(eventResponseClient, {
+            model: payloadDevices.model,
+            pins: payloadDevices.pins,
+          });
+        }
       }
     } catch (error) {
       console.log(error);

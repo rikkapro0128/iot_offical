@@ -306,6 +306,7 @@ class Node {
           for (var key in payload) {
             node[key] = payload[key];
           }
+          node.overwrite = true;
           await node.save();
           res.status(200).json({ message: "update node successfull!" });
         } else {
