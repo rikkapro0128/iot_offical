@@ -77,7 +77,7 @@ class Node {
     try {
       const idUser = req.idClientUser;
       const listNode = await NodeModel.NodeMCU.find(
-        { bindUser: idUser },
+        { bindUser: idUser, status: { $in: ["init", "updated", null] } },
         "-bindUser -configBy -devices -sensors"
       );
       res
@@ -126,28 +126,26 @@ class Node {
     // [DELETE]: /api/node/remove/:id
     try {
       const idUser = req.idClientUser;
-      const idNode = req.params.id;
-      const node = await NodeModel.NodeMCU.findById(idNode);
-      if (node) {
-        if (node.bindUser.toString() === idUser) {
-          // remove all device & sensor depend-on
-          await NodeModel.Device.deleteMany({ byNode: idNode });
-          await NodeModel.Sensor.deleteMany({ byNode: idNode });
-          NodeModel.NodeMCU.findByIdAndRemove(idNode)
-            .exec()
-            .then((response) => {
-              res
-                .status(200)
-                .json({ message: "remove node successfull!", idNode });
-            })
-            .catch((err) => {
-              res.status(500).json({ message: "can't remove node!", idNode });
-            });
-        } else {
-          return res
-            .status(403)
-            .json({ message: "You not permission remove this node!", idNode });
-        }
+      const ids = req.body.nodeIDs;
+      if (ids?.length > 0) {
+        const nodes = await NodeModel.NodeMCU.find({ _id: { $in: ids } });
+        const checkNodes = nodes.map(async (node) => {
+          if (node.bindUser.toString() === idUser) {
+            await NodeModel.NodeMCU.updateOne(
+              { _id: node._id },
+              { status: "removed" }
+            );
+            return Promise.resolve({ id: node._id, statusRemove: "done" });
+          } else {
+            return Promise.resolve({ id: node._id, statusRemove: "refuse" });
+          }
+        });
+        const tempNodes = await Promise.all(checkNodes);
+        return res
+          .status(200)
+          .json({ message: "remove node successfull!", nodeIDs: tempNodes });
+      } else {
+        return res.status(403).json({ message: "field {nodeIDs} is empty!" });
       }
     } catch (error) {
       res.status(401).json({ message: "something went wrong!" });
@@ -297,25 +295,29 @@ class Node {
   async updateNode(req, res, next) {
     try {
       const idUser = req.idClientUser;
-      const idNode = req.params.id;
-      const node = await NodeModel.NodeMCU.findById(idNode);
-      if (node) {
-        if (node.bindUser.toString() === idUser) {
-          // update node is here
-          const payload = req.body;
-          for (var key in payload) {
-            node[key] = payload[key];
+      const nodesChange = req.body.nodesUpdate;
+      const resultUpdateNodes = [];
+      const tempProcess = Object.keys(nodesChange).map(async (id) => {
+        const searchNode = await NodeModel.NodeMCU.findOne(
+          { _id: id, bindUser: idUser },
+        );
+        if(searchNode) {
+          const payload = nodesChange[id];
+          for (const field of Object.keys(payload)) {
+            searchNode[field] = payload[field];
           }
-          node.overwrite = true;
-          await node.save();
-          res.status(200).json({ message: "update node successfull!" });
-        } else {
-          return res
-            .status(403)
-            .json({ message: "You not permission update this node!", idNode });
+          searchNode.status = 'updated';
+          resultUpdateNodes.push({ node: searchNode.toObject(), status: 'done' });
+          return await searchNode.save();
+        }else {
+          resultUpdateNodes.push({ id, status: 'refuse' });
+          return Promise.resolve(true);
         }
-      }
+      });
+      await Promise.all(tempProcess);
+      res.status(200).json({ message: "update node done!", resultUpdateNodes });
     } catch (error) {
+      console.log(error);
       res.status(401).json({ message: "something went wrong!" });
     }
   }

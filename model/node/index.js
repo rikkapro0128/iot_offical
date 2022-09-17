@@ -69,12 +69,12 @@ const NodeMCUShema = new Schema(
     typeModal: { type: String, require: true },
     configBy: { type: String, default: "miru" },
     bindUser: { type: Schema.Types.ObjectId, ref: "User" },
-    overwrite: { type: Boolean, default: false },
     socketStatus: {
       type: String,
       enum: ["online", "offline"],
       default: "offline",
     },
+    status: { type: String, enum: ['removed', 'init', 'updated'], default: 'init' }
   },
   { timestamps: true }
 );

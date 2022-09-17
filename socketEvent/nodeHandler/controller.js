@@ -84,13 +84,14 @@ class node {
             _id: this.idNode,
           }
         )
-        if(!NodeSearch.overwrite) {
+        if(!NodeSearch?.status || NodeSearch?.status === 'init') {
 
           NodeSearch.ipRemote = this.ip;
           NodeSearch.desc = payload.desc;
           NodeSearch.typeModel = payload.type;
           NodeSearch.macAddress = payload.ip_mac;
           NodeSearch.configBy = payload.config_by;
+          NodeSearch.status = 'init';
 
           await NodeSearch.save();
         }
