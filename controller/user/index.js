@@ -1,4 +1,4 @@
-import { UserModel } from '../../model/index.js';
+import { UserModel, HistoryModel } from '../../model/index.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import help from '../../ultils/index.js';
@@ -125,6 +125,18 @@ class User {
       }else {
         res.status(403).json({ message: 'field {oldPassword} is wrong!' })
       }
+    } catch (error) {
+      console.log(error);
+      res.status(401).json({ message: 'something went wrong!' });
+    }
+  }
+
+  async getNotify(req, res, next) {
+    try {
+      const { limit = 10, skip = 0, sort = 'asc' } = req.query;
+      const idUser = req.idClientUser;
+      const notifys = await HistoryModel.User.find({ bindUser: idUser }).limit(limit).skip(skip).sort({ 'createdAt': sort === 'desc' ? -1 : 1 });
+      res.status(200).json({ message: 'get notify successful!', skipPresent: skip, skipNext: parseInt(skip) + parseInt(limit), length: notifys.length, notifys});
     } catch (error) {
       console.log(error);
       res.status(401).json({ message: 'something went wrong!' });

@@ -1,4 +1,5 @@
 import { UserModel, NodeModel } from "../../model/index.js";
+import helper from "../../ultils/index.js";
 
 const timelineToSecond = {
   minute: 60,
@@ -117,6 +118,11 @@ class Node {
         message: "create node successfull!",
         node: { _id, name, typeModal, desc },
       });
+      await helper.createHistory({
+        bind: idUser,
+        action: "_add_node_",
+        options: { idNode: _id },
+      });
     } catch (error) {
       res.status(401).json({ message: "something went wrong!" });
     }
@@ -141,13 +147,28 @@ class Node {
           }
         });
         const tempNodes = await Promise.all(checkNodes);
-        return res
+
+        res
           .status(200)
           .json({ message: "remove node successfull!", nodeIDs: tempNodes });
+
+        const count = tempNodes.reduce(
+          (hold, value) => (value.statusRemove === "done" ? ++hold : hold),
+          0
+        );
+        const lsID = tempNodes
+          .map((value) => (value.statusRemove === "done" ? value.id : null))
+          .filter((value) => value !== null);
+        await helper.createHistory({
+          bind: idUser,
+          action: "_remove_node_",
+          options: { total: count, idNode: lsID },
+        });
       } else {
-        return res.status(403).json({ message: "field {nodeIDs} is empty!" });
+        res.status(403).json({ message: "field {nodeIDs} is empty!" });
       }
     } catch (error) {
+      console.log(error);
       res.status(401).json({ message: "something went wrong!" });
     }
   }
@@ -298,24 +319,39 @@ class Node {
       const nodesChange = req.body.nodesUpdate;
       const resultUpdateNodes = [];
       const tempProcess = Object.keys(nodesChange).map(async (id) => {
-        const searchNode = await NodeModel.NodeMCU.findOne(
-          { _id: id, bindUser: idUser },
-        );
-        if(searchNode) {
+        const searchNode = await NodeModel.NodeMCU.findOne({
+          _id: id,
+          bindUser: idUser,
+        });
+        if (searchNode) {
           const payload = nodesChange[id];
           for (const field of Object.keys(payload)) {
             searchNode[field] = payload[field];
           }
-          searchNode.status = 'updated';
-          resultUpdateNodes.push({ node: searchNode.toObject(), status: 'done' });
-          return await searchNode.save();
-        }else {
-          resultUpdateNodes.push({ id, status: 'refuse' });
+          searchNode.status = "updated";
+          const nodeSaved = await searchNode.save();
+          resultUpdateNodes.push({
+            node: nodeSaved.toObject(),
+            status: "done",
+          });
+          return Promise.resolve(true);
+        } else {
+          resultUpdateNodes.push({ id, status: "refuse" });
           return Promise.resolve(true);
         }
       });
       await Promise.all(tempProcess);
       res.status(200).json({ message: "update node done!", resultUpdateNodes });
+      const count = resultUpdateNodes.reduce((hold, value) => value.status === 'done' ? ++hold : hold, 0)
+      const lsID = resultUpdateNodes
+          .map((value) => (value.status === 'done' ? value.node._id : null))
+          .filter((value) => value !== null);
+      await helper.createHistory({
+        bind: idUser,
+        action: "_change_info_node_",
+        options: { total: count, idNode: lsID },
+      });
+
     } catch (error) {
       console.log(error);
       res.status(401).json({ message: "something went wrong!" });

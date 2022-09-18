@@ -7,11 +7,6 @@ import { defaultAvatar } from '../../diagram/avatar.js';
  * Define Schemas
  */
 
-const UserHistorySheme = new Schema({
-  bindUser: { type: Schema.Types.ObjectId },
-  actions: { type: String, default: '' },
-}, { timestamps: true });
-
  const UserSheme = new Schema({
   name: { type: String, unique: true, require: true },
   hash: { type: String, require: true },
