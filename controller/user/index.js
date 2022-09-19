@@ -135,8 +135,11 @@ class User {
     try {
       const { limit = 10, skip = 0, sort = 'asc' } = req.query;
       const idUser = req.idClientUser;
-      const notifys = await HistoryModel.User.find({ bindUser: idUser }).limit(limit).skip(skip).sort({ 'createdAt': sort === 'desc' ? -1 : 1 });
-      res.status(200).json({ message: 'get notify successful!', skipPresent: skip, skipNext: parseInt(skip) + parseInt(limit), length: notifys.length, notifys});
+      const countRecordNotifys = HistoryModel.User.countDocuments();
+      const notifysDoc = HistoryModel.User.find({ bindUser: idUser }).limit(limit).skip(skip).sort({ 'createdAt': sort === 'desc' ? -1 : 1 });
+      const [count, notifys] = await Promise.all([countRecordNotifys, notifysDoc]);
+      const skipNext = parseInt(skip) + parseInt(limit);
+      res.status(200).json({ message: 'get notify successful!', total: count, skipPresent: skip, skipNext: skipNext >= count ? -1 : skipNext, length: notifys.length, notifys });
     } catch (error) {
       console.log(error);
       res.status(401).json({ message: 'something went wrong!' });
